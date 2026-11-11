@@ -1,84 +1,245 @@
 <%- include('partials/head', { judul: title }) %>
+<!-- CDN Leaflet untuk Peta -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <body class="bg-kabut text-tinta font-sans antialiased">
 
   <header class="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
     <a href="/" class="text-xl font-extrabold tracking-tight">LaundrAI</a>
     <nav class="flex gap-5 text-sm font-semibold">
-      <a href="#produk" class="hover:underline focus-visible:underline">Layanan</a>
-      <a href="/api/produk" class="hover:underline focus-visible:underline">API Produk</a>
-      <a href="/api/status" class="hover:underline focus-visible:underline">API Status</a>
+      <a href="#form-pesanan" class="hover:underline">Buat Pesanan</a>
+      <a href="#daftar-pesanan" class="hover:underline">Daftar Aktif</a>
     </nav>
   </header>
 
-  <main>
-    <!-- Hero -->
-    <section class="max-w-5xl mx-auto px-6 pt-10 pb-20 grid md:grid-cols-2 gap-12 items-center">
-      <div>
-        <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-[1.05] tracking-tight">
-          Asisten laundry mahasiswa paling cerdas.
-        </h1>
-        <p class="mt-6 text-lg max-w-md text-tinta/80">
-          Tinggal serahkan cucian kotor, kami selesaikan dengan cepat. Pakaian rapi, bebas repot.
-        </p>
-        <a href="#produk"
-           class="inline-block mt-8 bg-tinta text-kabut font-semibold rounded-md px-6 py-3 hover:bg-tinta/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta">
-          Lihat layanan
-        </a>
-      </div>
-
-      <!-- Respons asli dari /api/status -->
-      <div class="bg-tinta text-kabut rounded-lg p-6 font-mono text-sm shadow-lg">
-        <div class="flex items-center justify-between mb-4">
-          <span class="font-semibold">GET /api/status</span>
-          <span class="flex items-center gap-2">
-            <span id="status-dot" class="h-2.5 w-2.5 rounded-full bg-kabut/40"></span>
-            <span id="status-label">Menghubungi server</span>
-          </span>
+  <main class="max-w-5xl mx-auto px-6 pb-20">
+    <!-- Form Create & Update Pesanan -->
+    <section id="form-pesanan" class="pt-10 mb-16">
+      <h2 class="text-3xl font-extrabold tracking-tight mb-6" id="form-title">Buat Pesanan Baru</h2>
+      <form id="orderForm" class="bg-white p-8 rounded-lg shadow-sm border border-tinta/10">
+        <input type="hidden" id="pesananId" value="">
+        
+        <div class="grid md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-semibold mb-2">Nama Pelanggan</label>
+            <input type="text" id="nama" required class="w-full border border-tinta/20 rounded p-2 focus:outline-tinta">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold mb-2">Berat Cucian (Kg) - <span class="font-normal text-tinta/60">Isi 0 jika belum ditimbang</span></label>
+            <input type="number" id="berat" step="0.1" min="0" value="0" class="w-full border border-tinta/20 rounded p-2 focus:outline-tinta" oninput="hitungTotal()">
+          </div>
         </div>
-        <pre id="status-output" class="whitespace-pre-wrap break-words text-madu min-h-[8rem]">...</pre>
-      </div>
+
+        <div class="mt-6 border-t border-tinta/10 pt-6">
+          <label class="block text-sm font-semibold mb-2 text-madu">Layanan Antar Jemput</label>
+          <label class="flex items-center gap-2 cursor-pointer mb-4">
+            <input type="checkbox" name="tambahan" value="Antar Jemput" onchange="hitungTotal()"> 
+            <span class="font-semibold">Gunakan Jasa Antar Jemput (+Rp 5.000)</span>
+          </label>
+
+          <label class="block text-sm font-semibold mb-2">Alamat Penjemputan</label>
+          <textarea id="alamat" rows="2" placeholder="Contoh: Kos Putra, Jl. Rajawali No 10..." class="w-full border border-tinta/20 rounded p-2 focus:outline-tinta"></textarea>
+        </div>
+
+        <div class="mt-4">
+          <label class="block text-sm font-semibold mb-2">Pilih Titik Lokasi (Klik pada peta)</label>
+          <div id="map" class="w-full h-64 rounded border border-tinta/20 z-0"></div>
+          <input type="hidden" id="koordinat" value="">
+          <p class="text-xs text-tinta/60 mt-1" id="koordinat-text">Titik belum dipilih.</p>
+        </div>
+
+        <div class="mt-6 border-t border-tinta/10 pt-6">
+          <label class="block text-sm font-semibold mb-2">Paket Utama</label>
+          <div class="flex gap-4">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="paket" value="Standar" checked onchange="hitungTotal()"> Standar (Rp 5.000/kg)
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="paket" value="Kilat" onchange="hitungTotal()"> Kilat (Rp 8.000/kg)
+            </label>
+          </div>
+        </div>
+
+        <div class="mt-6">
+          <label class="block text-sm font-semibold mb-2">Item Tambahan (Pilih lebih dari satu)</label>
+          <div class="flex gap-4">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="tambahan" value="Sprei" onchange="hitungTotal()"> Sprei (+Rp 5.000)
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="tambahan" value="Selimut" onchange="hitungTotal()"> Selimut (+Rp 10.000)
+            </label>
+          </div>
+        </div>
+
+        <div class="mt-8 flex items-center justify-between border-t border-tinta/10 pt-6">
+          <div>
+            <p class="text-sm text-tinta/70">Total Estimasi Harga:</p>
+            <p class="text-3xl font-extrabold text-madu" id="totalHargaDisplay">Rp 0</p>
+            <input type="hidden" id="totalHargaValue" value="0">
+          </div>
+          <button type="submit" id="btnSubmit" class="bg-tinta text-kabut font-semibold rounded-md px-8 py-3 hover:bg-tinta/90 transition">
+            Simpan Pesanan
+          </button>
+        </div>
+      </form>
     </section>
 
-    <!-- Produk/Layanan -->
-    <section id="produk" class="max-w-5xl mx-auto px-6 pb-20 scroll-mt-6">
-      <h2 class="text-3xl font-extrabold tracking-tight">Daftar Layanan</h2>
-      <p class="mt-2 text-tinta/70">Data diambil dari <code class="font-mono text-sm">models/produkModel.js</code>.</p>
-
-      <ul class="mt-8 divide-y divide-tinta/20 border-y border-tinta/20">
-        <% produk.forEach(function (p) { %>
-          <li class="py-5 flex items-start justify-between gap-6">
-            <div>
-              <h3 class="text-lg font-semibold"><%= p.nama %></h3>
-              <p class="text-tinta/70 max-w-md"><%= p.deskripsi %></p>
-              <p class="mt-1 text-sm text-tinta/60"><%= p.kategori %></p>
+    <!-- Tabel / Daftar Read, Update, Delete -->
+    <section id="daftar-pesanan" class="scroll-mt-10">
+      <h2 class="text-3xl font-extrabold tracking-tight mb-6">Daftar Pesanan Aktif</h2>
+      
+      <div class="grid gap-4">
+        <% if (pesanan.length === 0) { %>
+          <p class="text-tinta/60 italic">Belum ada pesanan aktif saat ini.</p>
+        <% } else { %>
+          <% pesanan.forEach(function (p) { %>
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-tinta/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <h3 class="text-xl font-bold"><%= p.nama_pelanggan %></h3>
+                <p class="text-sm text-tinta/70 mt-1">
+                  <span class="font-semibold text-tinta"><%= p.paket_utama %></span> 
+                  (<%= p.berat_kg %> Kg) 
+                  <% if (p.item_tambahan) { %> | Tambahan: <%= p.item_tambahan %> <% } %>
+                </p>
+                <% if (p.alamat_jemput) { %>
+                  <p class="text-sm text-tinta/70 mt-2 bg-kabut p-2 rounded inline-block">
+                    📍 <%= p.alamat_jemput %>
+                    <% if (p.koordinat_lokasi) { %>
+                      <br><a href="https://www.google.com/maps/search/?api=1&query=<%= p.koordinat_lokasi %>" target="_blank" class="text-xs text-blue-600 hover:underline font-semibold mt-1 inline-block">Buka Peta di Google Maps &rarr;</a>
+                    <% } %>
+                  </p>
+                <% } %>
+                <p class="text-xs text-tinta/40 mt-2">Dipesan: <%= new Date(p.waktu_pesan).toLocaleString('id-ID') %></p>
+              </div>
+              
+              <div class="flex items-center gap-6">
+                <div class="text-right">
+                  <p class="text-sm text-tinta/70">Total</p>
+                  <p class="text-xl font-extrabold text-madu">Rp <%= parseInt(p.total_harga).toLocaleString('id-ID') %></p>
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="editPesanan('<%= p.id %>', '<%= p.nama_pelanggan %>', '<%= p.paket_utama %>', '<%= p.item_tambahan %>', '<%= p.berat_kg %>', '<%= p.alamat_jemput %>', '<%= p.koordinat_lokasi %>')" class="bg-kabut text-tinta px-3 py-1.5 rounded text-sm font-semibold hover:bg-tinta hover:text-kabut transition">Edit</button>
+                  <button onclick="hapusPesanan('<%= p.id %>')" class="bg-red-100 text-red-700 px-3 py-1.5 rounded text-sm font-semibold hover:bg-red-600 hover:text-white transition">Batal</button>
+                </div>
+              </div>
             </div>
-            <div class="text-right shrink-0">
-              <p class="text-lg font-extrabold">Rp <%= p.harga.toLocaleString('id-ID') %></p>
-              <p class="text-sm text-tinta/60">Kapasitas: <%= p.stok %></p>
-            </div>
-          </li>
-        <% }); %>
-      </ul>
+          <% }); %>
+        <% } %>
+      </div>
     </section>
   </main>
 
   <script>
-    (async function () {
-      const output = document.getElementById('status-output');
-      const label = document.getElementById('status-label');
-      const dot = document.getElementById('status-dot');
+    let map = L.map('map').setView([-7.8109, 110.3204], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    
+    let marker;
+    map.on('click', function(e) {
+      if(marker) map.removeLayer(marker);
+      marker = L.marker(e.latlng).addTo(map);
+      const koordString = e.latlng.lat + "," + e.latlng.lng;
+      document.getElementById('koordinat').value = koordString;
+      document.getElementById('koordinat-text').innerText = "Titik dipilih: " + koordString;
+    });
+
+    function hitungTotal() {
+      const beratStr = document.getElementById('berat').value;
+      const berat = parseFloat(beratStr) || 0;
+      const paket = document.querySelector('input[name="paket"]:checked').value;
+      const tambahanNodes = document.querySelectorAll('input[name="tambahan"]:checked');
+      
+      let hargaPaket = (paket === 'Standar') ? 5000 : 8000;
+      let total = berat * hargaPaket;
+
+      tambahanNodes.forEach(node => {
+        if(node.value === 'Sprei') total += 5000;
+        if(node.value === 'Selimut') total += 10000;
+        if(node.value === 'Antar Jemput') total += 5000;
+      });
+
+      document.getElementById('totalHargaValue').value = total;
+      document.getElementById('totalHargaDisplay').innerText = 'Rp ' + total.toLocaleString('id-ID');
+    }
+
+    document.getElementById('orderForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('pesananId').value;
+      const tambahanArray = Array.from(document.querySelectorAll('input[name="tambahan"]:checked')).map(el => el.value);
+      
+      const data = {
+        nama_pelanggan: document.getElementById('nama').value,
+        paket_utama: document.querySelector('input[name="paket"]:checked').value,
+        item_tambahan: tambahanArray.join(', '),
+        berat_kg: parseFloat(document.getElementById('berat').value) || 0,
+        alamat_jemput: document.getElementById('alamat').value,
+        koordinat_lokasi: document.getElementById('koordinat').value,
+        total_harga: parseFloat(document.getElementById('totalHargaValue').value)
+      };
+
+      const url = id ? `/api/pesanan/${id}` : '/api/pesanan';
+      const method = id ? 'PUT' : 'POST';
 
       try {
-        const res = await fetch('/api/status');
-        const data = await res.json();
-        output.textContent = JSON.stringify(data, null, 2);
-        label.textContent = 'Server berjalan';
-        dot.className = 'h-2.5 w-2.5 rounded-full bg-madu motion-safe:animate-pulse';
+        const res = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if(result.sukses) {
+          window.location.reload();
+        }
       } catch (err) {
-        output.textContent = 'Gagal menghubungi /api/status. Pastikan server masih berjalan.';
-        label.textContent = 'Tidak terhubung';
+        alert("Gagal memproses pesanan.");
       }
-    })();
+    });
+
+    async function hapusPesanan(id) {
+      if(confirm('Yakin ingin membatalkan pesanan ini?')) {
+        try {
+          const res = await fetch(`/api/pesanan/${id}`, { method: 'DELETE' });
+          const result = await res.json();
+          if(result.sukses) {
+            window.location.reload();
+          }
+        } catch (err) {
+          alert("Gagal menghapus pesanan.");
+        }
+      }
+    }
+
+    function editPesanan(id, nama, paket, tambahan, berat, alamat, koordinat) {
+      document.getElementById('form-title').innerText = "Update Data & Berat Cucian";
+      document.getElementById('pesananId').value = id;
+      document.getElementById('nama').value = nama;
+      document.getElementById('berat').value = berat;
+      
+      if (alamat && alamat !== 'undefined') document.getElementById('alamat').value = alamat;
+      else document.getElementById('alamat').value = '';
+      
+      if (koordinat && koordinat !== 'undefined') {
+        document.getElementById('koordinat').value = koordinat;
+        document.getElementById('koordinat-text').innerText = "Titik lokasi sebelumnya tersimpan.";
+      }
+      
+      document.querySelector(`input[name="paket"][value="${paket}"]`).checked = true;
+      
+      document.querySelectorAll('input[name="tambahan"]').forEach(cb => cb.checked = false);
+      if (tambahan && tambahan !== 'undefined') {
+        const itemArray = tambahan.split(', ');
+        itemArray.forEach(item => {
+          const cb = document.querySelector(`input[name="tambahan"][value="${item}"]`);
+          if(cb) cb.checked = true;
+        });
+      }
+      
+      hitungTotal();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   </script>
 
 <%- include('partials/footer') %>
