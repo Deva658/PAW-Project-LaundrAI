@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<body class="bg-kabut text-tinta font-sans antialiased">
+<body class="bg-kabut text-tinta font-sans antialiased relative">
 
   <header class="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
     <a href="/" class="text-xl font-extrabold tracking-tight">LaundrAI</a>
@@ -131,7 +131,79 @@
     </section>
   </main>
 
+  <!-- MODAL RESI PESANAN -->
+  <div id="modalResi" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 relative border border-tinta/20">
+      <div class="text-center pb-4 border-b border-tinta/10">
+        <h3 class="text-2xl font-extrabold tracking-tight">🧾 RESI PESANAN LAUNDRAI</h3>
+        <p class="text-xs text-tinta/60 mt-1">Bukti Transaksi Resmi</p>
+      </div>
+      
+      <div class="py-4 space-y-3 text-sm">
+        <div class="flex justify-between">
+          <span class="text-tinta/70">ID Transaksi:</span>
+          <span class="font-bold" id="resiId">-</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-tinta/70">Nama Pelanggan:</span>
+          <span class="font-bold" id="resiNama">-</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-tinta/70">Paket Utama:</span>
+          <span class="font-bold" id="resiPaket">-</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-tinta/70">Berat Cucian:</span>
+          <span class="font-bold" id="resiBerat">-</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-tinta/70">Item Tambahan:</span>
+          <span class="font-bold" id="resiTambahan">-</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-tinta/70">Alamat Jemput:</span>
+          <span class="font-bold text-right max-w-[200px] truncate" id="resiAlamat">-</span>
+        </div>
+        <div class="border-t border-dashed border-tinta/20 pt-3 flex justify-between items-center">
+          <span class="font-bold text-base">Total Bayar:</span>
+          <span class="text-xl font-extrabold text-madu" id="resiTotal">Rp 0</span>
+        </div>
+      </div>
+
+      <div class="mt-6 flex gap-3">
+        <button onclick="window.print()" class="flex-1 bg-kabut text-tinta font-semibold py-2.5 rounded hover:bg-tinta hover:text-kabut transition text-sm">
+          Cetak Resi
+        </button>
+        <button onclick="tutupResi()" class="flex-1 bg-tinta text-white font-semibold py-2.5 rounded hover:bg-tinta/90 transition text-sm">
+          Selesai
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WIDGET CHATBOT AI -->
+  <button id="chatToggleBtn" class="fixed bottom-6 right-6 bg-tinta text-white px-6 py-3 rounded-full shadow-xl font-bold hover:bg-tinta/90 transition z-50 flex items-center gap-2">
+    <span>💬 Tanya CS AI</span>
+  </button>
+
+  <div id="chatBox" class="hidden fixed bottom-20 right-6 w-80 bg-white rounded-lg shadow-2xl border border-tinta/20 z-50 flex flex-col overflow-hidden">
+    <div class="bg-tinta text-white p-4 font-bold flex justify-between items-center">
+      <span>CS LaundrAI (AI)</span>
+      <button id="closeChatBtn" class="text-white hover:text-gray-300 font-bold text-xl">&times;</button>
+    </div>
+    <div id="chatMessages" class="h-64 overflow-y-auto p-4 flex flex-col gap-3 text-sm bg-gray-50">
+      <div class="bg-gray-200 text-tinta p-2 rounded-lg max-w-[80%] self-start">
+        Halo! Selamat datang di LaundrAI ~ Ada yang bisa kami bantu? Mau nanya soal harga cucian, layanan antar-jemput, atau yang lainnya? Bilang aja ya! 😊
+      </div>
+    </div>
+    <div class="p-3 border-t border-tinta/10 flex gap-2 bg-white">
+      <input type="text" id="chatInput" placeholder="Ketik pesan..." class="flex-1 border border-tinta/20 rounded px-3 py-2 focus:outline-tinta text-sm">
+      <button id="sendChatBtn" class="bg-tinta text-white px-4 py-2 rounded text-sm font-semibold hover:bg-tinta/90">Kirim</button>
+    </div>
+  </div>
+
   <script>
+    // --- SETUP PETA LEAFLET ---
     let map = L.map('map').setView([-7.8109, 110.3204], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
@@ -146,6 +218,7 @@
       document.getElementById('koordinat-text').innerText = "Titik dipilih: " + koordString;
     });
 
+    // --- LOGIKA FORM & CRUD PESANAN ---
     function hitungTotal() {
       const beratStr = document.getElementById('berat').value;
       const berat = parseFloat(beratStr) || 0;
@@ -190,13 +263,36 @@
           body: JSON.stringify(data)
         });
         const result = await res.json();
+        
         if(result.sukses) {
-          window.location.reload();
+          // Jika tambah data baru, tampilkan modal resi
+          if (!id && result.data) {
+            tampilkanResi(result.data);
+          } else {
+            window.location.reload();
+          }
         }
       } catch (err) {
         alert("Gagal memproses pesanan.");
       }
     });
+
+    function tampilkanResi(data) {
+      document.getElementById('resiId').innerText = "#" + data.id;
+      document.getElementById('resiNama').innerText = data.nama_pelanggan;
+      document.getElementById('resiPaket').innerText = data.paket_utama;
+      document.getElementById('resiBerat').innerText = data.berat_kg + " Kg";
+      document.getElementById('resiTambahan').innerText = data.item_tambahan || "Tidak ada";
+      document.getElementById('resiAlamat').innerText = data.alamat_jemput || "Ambil sendiri ke toko";
+      document.getElementById('resiTotal').innerText = "Rp " + parseInt(data.total_harga).toLocaleString('id-ID');
+      
+      document.getElementById('modalResi').classList.remove('hidden');
+    }
+
+    function tutupResi() {
+      document.getElementById('modalResi').classList.add('hidden');
+      window.location.reload();
+    }
 
     async function hapusPesanan(id) {
       if(confirm('Yakin ingin membatalkan pesanan ini?')) {
@@ -240,6 +336,70 @@
       hitungTotal();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+    // --- LOGIKA CHATBOT AI ---
+    const chatToggleBtn = document.getElementById('chatToggleBtn');
+    const closeChatBtn = document.getElementById('closeChatBtn');
+    const chatBox = document.getElementById('chatBox');
+    const chatInput = document.getElementById('chatInput');
+    const sendChatBtn = document.getElementById('sendChatBtn');
+    const chatMessages = document.getElementById('chatMessages');
+
+    chatToggleBtn.addEventListener('click', () => {
+      chatBox.classList.toggle('hidden');
+    });
+
+    closeChatBtn.addEventListener('click', () => {
+      chatBox.classList.add('hidden');
+    });
+
+    const appendMessage = (msg, sender) => {
+      const div = document.createElement('div');
+      div.className = `p-2 rounded-lg max-w-[80%] ${sender === 'user' ? 'bg-tinta text-white self-end' : 'bg-gray-200 text-tinta self-start'}`;
+      div.innerText = msg;
+      chatMessages.appendChild(div);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+
+    const handleSendChat = async () => {
+      const message = chatInput.value.trim();
+      if (!message) return;
+
+      appendMessage(message, 'user');
+      chatInput.value = '';
+      
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'bg-gray-200 text-tinta p-2 rounded-lg max-w-[80%] self-start italic text-xs';
+      loadingDiv.innerText = 'AI sedang mengetik...';
+      loadingDiv.id = 'loadingMsg';
+      chatMessages.appendChild(loadingDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+        const data = await res.json();
+        
+        document.getElementById('loadingMsg').remove();
+        
+        if (data.success) {
+          appendMessage(data.data.reply, 'bot');
+        } else {
+          appendMessage("Error: " + data.message, 'bot');
+        }
+      } catch (err) {
+        document.getElementById('loadingMsg').remove();
+        appendMessage("Gagal terhubung ke AI.", 'bot');
+      }
+    };
+
+    sendChatBtn.addEventListener('click', handleSendChat);
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleSendChat();
+    });
   </script>
 
 <%- include('partials/footer') %>

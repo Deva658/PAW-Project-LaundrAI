@@ -22,6 +22,7 @@ const getPesananById = async (req, res) => {
 const createPesanan = async (req, res) => {
     try {
         const newPesanan = await pesananModel.create(req.body);
+        // Mengirim balik data objek pesanan baru agar modal resi di frontend bisa langsung membacanya
         res.status(201).json({ sukses: true, pesan: "Pesanan berhasil ditambahkan", data: newPesanan });
     } catch (err) {
         res.status(500).json({ sukses: false, pesan: err.message });

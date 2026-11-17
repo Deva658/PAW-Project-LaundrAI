@@ -10,19 +10,19 @@ const getById = async (id) => {
 };
 
 const create = async (data) => {
-    const { nama_pelanggan, paket_utama, item_tambahan, berat_kg, total_harga, alamat_jemput, koordinat_lokasi } = data;
+    const { nama_pelanggan, paket_utama, item_tambahan, berat_kg, total_harga, alamat_jemput, koordinat_lokasi, status = 'Menunggu' } = data;
     const result = await pool.query(
-        'INSERT INTO pesanan (nama_pelanggan, paket_utama, item_tambahan, berat_kg, total_harga, alamat_jemput, koordinat_lokasi) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-        [nama_pelanggan, paket_utama, item_tambahan, berat_kg, total_harga, alamat_jemput, koordinat_lokasi]
+        'INSERT INTO pesanan (nama_pelanggan, paket_utama, item_tambahan, berat_kg, total_harga, alamat_jemput, koordinat_lokasi, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+        [nama_pelanggan, paket_utama, item_tambahan, berat_kg, total_harga, alamat_jemput, koordinat_lokasi, status]
     );
     return result.rows[0];
 };
 
 const update = async (id, data) => {
-    const { nama_pelanggan, paket_utama, item_tambahan, berat_kg, total_harga, alamat_jemput, koordinat_lokasi } = data;
+    const { nama_pelanggan, paket_utama, item_tambahan, berat_kg, total_harga, alamat_jemput, koordinat_lokasi, status } = data;
     const result = await pool.query(
-        'UPDATE pesanan SET nama_pelanggan = $1, paket_utama = $2, item_tambahan = $3, berat_kg = $4, total_harga = $5, alamat_jemput = $6, koordinat_lokasi = $7 WHERE id = $8 RETURNING *',
-        [nama_pelanggan, paket_utama, item_tambahan, berat_kg, total_harga, alamat_jemput, koordinat_lokasi, id]
+        'UPDATE pesanan SET nama_pelanggan = $1, paket_utama = $2, item_tambahan = $3, berat_kg = $4, total_harga = $5, alamat_jemput = $6, koordinat_lokasi = $7, status = $8 WHERE id = $9 RETURNING *',
+        [nama_pelanggan, paket_utama, item_tambahan, berat_kg, total_harga, alamat_jemput, koordinat_lokasi, status, id]
     );
     return result.rows[0];
 };
