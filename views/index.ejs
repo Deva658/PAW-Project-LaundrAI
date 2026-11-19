@@ -1,5 +1,4 @@
 <%- include('partials/head', { judul: title }) %>
-<!-- CDN Leaflet untuk Peta -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -8,14 +7,60 @@
   <header class="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
     <a href="/" class="text-xl font-extrabold tracking-tight">LaundrAI</a>
     <nav class="flex gap-5 text-sm font-semibold">
+      <a href="#daftar-harga" class="hover:underline">Daftar Harga</a>
+      <a href="#cek-resi" class="hover:underline">Cek Resi</a>
       <a href="#form-pesanan" class="hover:underline">Buat Pesanan</a>
       <a href="#daftar-pesanan" class="hover:underline">Daftar Aktif</a>
     </nav>
   </header>
 
   <main class="max-w-5xl mx-auto px-6 pb-20">
-    <!-- Form Create & Update Pesanan -->
-    <section id="form-pesanan" class="pt-10 mb-16">
+
+    <!-- 1. DAFTAR HARGA & CEK RESI DI BERANDA (US-03 & US-04) -->
+    <section id="daftar-harga" class="pt-6 mb-12 grid md:grid-cols-2 gap-6">
+      <div class="bg-white p-6 rounded-lg shadow-sm border border-tinta/10">
+        <h2 class="text-xl font-extrabold tracking-tight mb-4">Daftar Harga Layanan</h2>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between py-1.5 border-b border-tinta/10">
+            <span>Paket Cuci Standar (Kiloan)</span>
+            <span class="font-bold text-madu">Rp 5.000 / kg</span>
+          </div>
+          <div class="flex justify-between py-1.5 border-b border-tinta/10">
+            <span>Paket Cuci Kilat (Kiloan)</span>
+            <span class="font-bold text-madu">Rp 8.000 / kg</span>
+          </div>
+          <div class="flex justify-between py-1.5 border-b border-tinta/10">
+            <span>Cuci Sprei (Satuan)</span>
+            <span class="font-bold text-madu">Rp 5.000 / item</span>
+          </div>
+          <div class="flex justify-between py-1.5 border-b border-tinta/10">
+            <span>Cuci Selimut (Satuan)</span>
+            <span class="font-bold text-madu">Rp 10.000 / item</span>
+          </div>
+          <div class="flex justify-between py-1.5">
+            <span>Layanan Antar Jemput</span>
+            <span class="font-bold text-madu">Rp 5.000</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="cek-resi" class="bg-white p-6 rounded-lg shadow-sm border border-tinta/10 flex flex-col justify-between">
+        <div>
+          <h2 class="text-xl font-extrabold tracking-tight mb-2">Lacak Status Cucian</h2>
+          <p class="text-sm text-tinta/70 mb-4">Masukkan nomor resi (contoh: <span class="font-semibold">LNDRY-001</span>) untuk menanyakan status cucian langsung ke Asisten AI.</p>
+          <div class="flex gap-2">
+            <input type="text" id="inputCariResi" placeholder="Contoh: LNDRY-001" class="flex-1 border border-tinta/20 rounded px-3 py-2 text-sm uppercase focus:outline-tinta">
+            <button type="button" onclick="cekResiViaAI()" class="bg-tinta text-kabut font-semibold px-4 py-2 rounded text-sm hover:bg-tinta/90 transition">
+              Cek Status
+            </button>
+          </div>
+        </div>
+        <p class="text-xs text-tinta/50 mt-4">Pencarian otomatis membuka ruang chat AI dan menampilkan status cucian terkini.</p>
+      </div>
+    </section>
+
+    <!-- 2. FORM CREATE & UPDATE PESANAN (US-01 & US-02) -->
+    <section id="form-pesanan" class="mb-16">
       <h2 class="text-3xl font-extrabold tracking-tight mb-6" id="form-title">Buat Pesanan Baru</h2>
       <form id="orderForm" class="bg-white p-8 rounded-lg shadow-sm border border-tinta/10">
         <input type="hidden" id="pesananId" value="">
@@ -32,21 +77,25 @@
         </div>
 
         <div class="mt-6 border-t border-tinta/10 pt-6">
-          <label class="block text-sm font-semibold mb-2 text-madu">Layanan Antar Jemput</label>
-          <label class="flex items-center gap-2 cursor-pointer mb-4">
-            <input type="checkbox" name="tambahan" value="Antar Jemput" onchange="hitungTotal()"> 
+          <label class="block text-sm font-semibold mb-2 text-madu">Metode Layanan</label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="cbAntarJemput" name="tambahan" value="Antar Jemput" onchange="toggleAlamatJemput(); hitungTotal();"> 
             <span class="font-semibold">Gunakan Jasa Antar Jemput (+Rp 5.000)</span>
           </label>
 
-          <label class="block text-sm font-semibold mb-2">Alamat Penjemputan</label>
-          <textarea id="alamat" rows="2" placeholder="Contoh: Kos Putra, Jl. Rajawali No 10..." class="w-full border border-tinta/20 rounded p-2 focus:outline-tinta"></textarea>
-        </div>
-
-        <div class="mt-4">
-          <label class="block text-sm font-semibold mb-2">Pilih Titik Lokasi (Klik pada peta)</label>
-          <div id="map" class="w-full h-64 rounded border border-tinta/20 z-0"></div>
-          <input type="hidden" id="koordinat" value="">
-          <p class="text-xs text-tinta/60 mt-1" id="koordinat-text">Titik belum dipilih.</p>
+          <!-- Input alamat & peta muncul dinamis saat Antar Jemput dipilih -->
+          <div id="areaAntarJemput" class="hidden mt-4 space-y-4">
+            <div>
+              <label class="block text-sm font-semibold mb-2">Alamat Penjemputan</label>
+              <textarea id="alamat" rows="2" placeholder="Contoh: Kos Putra, Jl. Rajawali No 10..." class="w-full border border-tinta/20 rounded p-2 focus:outline-tinta"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold mb-2">Pilih Titik Lokasi (Klik pada peta)</label>
+              <div id="map" class="w-full h-64 rounded border border-tinta/20 z-0"></div>
+              <input type="hidden" id="koordinat" value="">
+              <p class="text-xs text-tinta/60 mt-1" id="koordinat-text">Titik belum dipilih.</p>
+            </div>
+          </div>
         </div>
 
         <div class="mt-6 border-t border-tinta/10 pt-6">
@@ -61,15 +110,26 @@
           </div>
         </div>
 
-        <div class="mt-6">
-          <label class="block text-sm font-semibold mb-2">Item Tambahan (Pilih lebih dari satu)</label>
-          <div class="flex gap-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="tambahan" value="Sprei" onchange="hitungTotal()"> Sprei (+Rp 5.000)
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="tambahan" value="Selimut" onchange="hitungTotal()"> Selimut (+Rp 10.000)
-            </label>
+        <div class="mt-6 flex flex-col md:flex-row gap-6">
+          <div class="flex-1">
+            <label class="block text-sm font-semibold mb-2">Item Tambahan (Pilih lebih dari satu)</label>
+            <div class="flex gap-4">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="tambahan" value="Sprei" onchange="hitungTotal()"> Sprei (+Rp 5.000)
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="tambahan" value="Selimut" onchange="hitungTotal()"> Selimut (+Rp 10.000)
+              </label>
+            </div>
+          </div>
+
+          <div class="flex-1 hidden" id="statusContainer">
+            <label class="block text-sm font-semibold mb-2">Status Cucian</label>
+            <select id="statusCucian" class="w-full border border-tinta/20 rounded p-2 focus:outline-tinta">
+              <option value="Menunggu">Menunggu</option>
+              <option value="Diproses">Diproses</option>
+              <option value="Selesai">Selesai</option>
+            </select>
           </div>
         </div>
 
@@ -86,7 +146,7 @@
       </form>
     </section>
 
-    <!-- Tabel / Daftar Read, Update, Delete -->
+    <!-- 3. DAFTAR PESANAN AKTIF -->
     <section id="daftar-pesanan" class="scroll-mt-10">
       <h2 class="text-3xl font-extrabold tracking-tight mb-6">Daftar Pesanan Aktif</h2>
       
@@ -94,10 +154,18 @@
         <% if (pesanan.length === 0) { %>
           <p class="text-tinta/60 italic">Belum ada pesanan aktif saat ini.</p>
         <% } else { %>
-          <% pesanan.forEach(function (p) { %>
+          <% pesanan.forEach(function (p) { 
+            const kodeResi = 'LNDRY-' + String(p.id).padStart(3, '0');
+          %>
             <div class="bg-white p-6 rounded-lg shadow-sm border border-tinta/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
-                <h3 class="text-xl font-bold"><%= p.nama_pelanggan %></h3>
+                <div class="flex items-center gap-2.5 flex-wrap">
+                  <span class="text-xs font-mono font-bold bg-tinta text-kabut px-2 py-0.5 rounded"><%= kodeResi %></span>
+                  <h3 class="text-xl font-bold"><%= p.nama_pelanggan %></h3>
+                  <span class="text-xs px-2 py-0.5 rounded font-bold <%= p.status === 'Selesai' ? 'bg-green-100 text-green-700' : p.status === 'Diproses' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700' %>">
+                    <%= p.status || 'Menunggu' %>
+                  </span>
+                </div>
                 <p class="text-sm text-tinta/70 mt-1">
                   <span class="font-semibold text-tinta"><%= p.paket_utama %></span> 
                   (<%= p.berat_kg %> Kg) 
@@ -120,7 +188,7 @@
                   <p class="text-xl font-extrabold text-madu">Rp <%= parseInt(p.total_harga).toLocaleString('id-ID') %></p>
                 </div>
                 <div class="flex gap-2">
-                  <button onclick="editPesanan('<%= p.id %>', '<%= p.nama_pelanggan %>', '<%= p.paket_utama %>', '<%= p.item_tambahan %>', '<%= p.berat_kg %>', '<%= p.alamat_jemput %>', '<%= p.koordinat_lokasi %>')" class="bg-kabut text-tinta px-3 py-1.5 rounded text-sm font-semibold hover:bg-tinta hover:text-kabut transition">Edit</button>
+                  <button onclick="editPesanan('<%= p.id %>', '<%= p.nama_pelanggan %>', '<%= p.paket_utama %>', '<%= p.item_tambahan %>', '<%= p.berat_kg %>', '<%= p.alamat_jemput %>', '<%= p.koordinat_lokasi %>', '<%= p.status || 'Menunggu' %>')" class="bg-kabut text-tinta px-3 py-1.5 rounded text-sm font-semibold hover:bg-tinta hover:text-kabut transition">Edit</button>
                   <button onclick="hapusPesanan('<%= p.id %>')" class="bg-red-100 text-red-700 px-3 py-1.5 rounded text-sm font-semibold hover:bg-red-600 hover:text-white transition">Batal</button>
                 </div>
               </div>
@@ -131,18 +199,18 @@
     </section>
   </main>
 
-  <!-- MODAL RESI PESANAN -->
+  <!-- MODAL RESI PESANAN (LNDRY-XXX) -->
   <div id="modalResi" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 relative border border-tinta/20">
       <div class="text-center pb-4 border-b border-tinta/10">
-        <h3 class="text-2xl font-extrabold tracking-tight">🧾 RESI PESANAN LAUNDRAI</h3>
-        <p class="text-xs text-tinta/60 mt-1">Bukti Transaksi Resmi</p>
+        <h3 class="text-2xl font-extrabold tracking-tight">RESI PESANAN LAUNDRAI</h3>
+        <p class="text-xs text-tinta/60 mt-1">Simpan nomor resi untuk melacak status cucian</p>
       </div>
       
       <div class="py-4 space-y-3 text-sm">
         <div class="flex justify-between">
-          <span class="text-tinta/70">ID Transaksi:</span>
-          <span class="font-bold" id="resiId">-</span>
+          <span class="text-tinta/70">Nomor Resi:</span>
+          <span class="font-mono font-bold text-tinta" id="resiId">-</span>
         </div>
         <div class="flex justify-between">
           <span class="text-tinta/70">Nama Pelanggan:</span>
@@ -159,6 +227,10 @@
         <div class="flex justify-between">
           <span class="text-tinta/70">Item Tambahan:</span>
           <span class="font-bold" id="resiTambahan">-</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-tinta/70">Status Awal:</span>
+          <span class="font-bold" id="resiStatus">Menunggu</span>
         </div>
         <div class="flex justify-between">
           <span class="text-tinta/70">Alamat Jemput:</span>
@@ -183,7 +255,7 @@
 
   <!-- WIDGET CHATBOT AI -->
   <button id="chatToggleBtn" class="fixed bottom-6 right-6 bg-tinta text-white px-6 py-3 rounded-full shadow-xl font-bold hover:bg-tinta/90 transition z-50 flex items-center gap-2">
-    <span>💬 Tanya CS AI</span>
+    <span>Tanya CS AI</span>
   </button>
 
   <div id="chatBox" class="hidden fixed bottom-20 right-6 w-80 bg-white rounded-lg shadow-2xl border border-tinta/20 z-50 flex flex-col overflow-hidden">
@@ -193,11 +265,11 @@
     </div>
     <div id="chatMessages" class="h-64 overflow-y-auto p-4 flex flex-col gap-3 text-sm bg-gray-50">
       <div class="bg-gray-200 text-tinta p-2 rounded-lg max-w-[80%] self-start">
-        Halo! Selamat datang di LaundrAI ~ Ada yang bisa kami bantu? Mau nanya soal harga cucian, layanan antar-jemput, atau yang lainnya? Bilang aja ya! 😊
+        Halo! Selamat datang di LaundrAI. Tanya harga layanan atau cek status resi (contoh: LNDRY-001) di sini ya!
       </div>
     </div>
     <div class="p-3 border-t border-tinta/10 flex gap-2 bg-white">
-      <input type="text" id="chatInput" placeholder="Ketik pesan..." class="flex-1 border border-tinta/20 rounded px-3 py-2 focus:outline-tinta text-sm">
+      <input type="text" id="chatInput" placeholder="Ketik pesan atau nomor resi..." class="flex-1 border border-tinta/20 rounded px-3 py-2 focus:outline-tinta text-sm">
       <button id="sendChatBtn" class="bg-tinta text-white px-4 py-2 rounded text-sm font-semibold hover:bg-tinta/90">Kirim</button>
     </div>
   </div>
@@ -218,10 +290,23 @@
       document.getElementById('koordinat-text').innerText = "Titik dipilih: " + koordString;
     });
 
-    // --- LOGIKA FORM & CRUD PESANAN ---
+    // --- TOGGLE DINAMIS ALAMAT ANTAR JEMPUT ---
+    function toggleAlamatJemput() {
+      const checked = document.getElementById('cbAntarJemput').checked;
+      const area = document.getElementById('areaAntarJemput');
+      if (checked) {
+        area.classList.remove('hidden');
+        setTimeout(() => map.invalidateSize(), 150);
+      } else {
+        area.classList.add('hidden');
+        document.getElementById('alamat').value = '';
+        document.getElementById('koordinat').value = '';
+      }
+    }
+
+    // --- KALKULATOR HARGA OTOMATIS ---
     function hitungTotal() {
-      const beratStr = document.getElementById('berat').value;
-      const berat = parseFloat(beratStr) || 0;
+      const berat = parseFloat(document.getElementById('berat').value) || 0;
       const paket = document.querySelector('input[name="paket"]:checked').value;
       const tambahanNodes = document.querySelectorAll('input[name="tambahan"]:checked');
       
@@ -238,6 +323,7 @@
       document.getElementById('totalHargaDisplay').innerText = 'Rp ' + total.toLocaleString('id-ID');
     }
 
+    // --- SUBMIT PESANAN ---
     document.getElementById('orderForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const id = document.getElementById('pesananId').value;
@@ -250,7 +336,8 @@
         berat_kg: parseFloat(document.getElementById('berat').value) || 0,
         alamat_jemput: document.getElementById('alamat').value,
         koordinat_lokasi: document.getElementById('koordinat').value,
-        total_harga: parseFloat(document.getElementById('totalHargaValue').value)
+        total_harga: parseFloat(document.getElementById('totalHargaValue').value),
+        status: document.getElementById('statusCucian').value || 'Menunggu'
       };
 
       const url = id ? `/api/pesanan/${id}` : '/api/pesanan';
@@ -265,7 +352,6 @@
         const result = await res.json();
         
         if(result.sukses) {
-          // Jika tambah data baru, tampilkan modal resi
           if (!id && result.data) {
             tampilkanResi(result.data);
           } else {
@@ -277,13 +363,18 @@
       }
     });
 
+    function formatResi(id) {
+      return 'LNDRY-' + String(id).padStart(3, '0');
+    }
+
     function tampilkanResi(data) {
-      document.getElementById('resiId').innerText = "#" + data.id;
+      document.getElementById('resiId').innerText = formatResi(data.id);
       document.getElementById('resiNama').innerText = data.nama_pelanggan;
       document.getElementById('resiPaket').innerText = data.paket_utama;
       document.getElementById('resiBerat').innerText = data.berat_kg + " Kg";
       document.getElementById('resiTambahan').innerText = data.item_tambahan || "Tidak ada";
-      document.getElementById('resiAlamat').innerText = data.alamat_jemput || "Ambil sendiri ke toko";
+      document.getElementById('resiStatus').innerText = data.status || "Menunggu";
+      document.getElementById('resiAlamat').innerText = data.alamat_jemput || "Antar sendiri ke toko";
       document.getElementById('resiTotal').innerText = "Rp " + parseInt(data.total_harga).toLocaleString('id-ID');
       
       document.getElementById('modalResi').classList.remove('hidden');
@@ -308,23 +399,18 @@
       }
     }
 
-    function editPesanan(id, nama, paket, tambahan, berat, alamat, koordinat) {
-      document.getElementById('form-title').innerText = "Update Data & Berat Cucian";
+    function editPesanan(id, nama, paket, tambahan, berat, alamat, koordinat, status) {
+      document.getElementById('form-title').innerText = "Update Pesanan & Status Cucian (" + formatResi(id) + ")";
       document.getElementById('pesananId').value = id;
       document.getElementById('nama').value = nama;
       document.getElementById('berat').value = berat;
       
-      if (alamat && alamat !== 'undefined') document.getElementById('alamat').value = alamat;
-      else document.getElementById('alamat').value = '';
-      
-      if (koordinat && koordinat !== 'undefined') {
-        document.getElementById('koordinat').value = koordinat;
-        document.getElementById('koordinat-text').innerText = "Titik lokasi sebelumnya tersimpan.";
-      }
+      document.getElementById('statusContainer').classList.remove('hidden');
+      document.getElementById('statusCucian').value = status || 'Menunggu';
       
       document.querySelector(`input[name="paket"][value="${paket}"]`).checked = true;
-      
       document.querySelectorAll('input[name="tambahan"]').forEach(cb => cb.checked = false);
+      
       if (tambahan && tambahan !== 'undefined') {
         const itemArray = tambahan.split(', ');
         itemArray.forEach(item => {
@@ -332,12 +418,19 @@
           if(cb) cb.checked = true;
         });
       }
+
+      toggleAlamatJemput();
+      if (alamat && alamat !== 'undefined') document.getElementById('alamat').value = alamat;
+      if (koordinat && koordinat !== 'undefined') {
+        document.getElementById('koordinat').value = koordinat;
+        document.getElementById('koordinat-text').innerText = "Titik lokasi sebelumnya tersimpan.";
+      }
       
       hitungTotal();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // --- LOGIKA CHATBOT AI ---
+    // --- LOGIKA CHATBOT AI & CEK RESI ---
     const chatToggleBtn = document.getElementById('chatToggleBtn');
     const closeChatBtn = document.getElementById('closeChatBtn');
     const chatBox = document.getElementById('chatBox');
@@ -355,14 +448,14 @@
 
     const appendMessage = (msg, sender) => {
       const div = document.createElement('div');
-      div.className = `p-2 rounded-lg max-w-[80%] ${sender === 'user' ? 'bg-tinta text-white self-end' : 'bg-gray-200 text-tinta self-start'}`;
+      div.className = `p-2 rounded-lg max-w-[80%] whitespace-pre-line ${sender === 'user' ? 'bg-tinta text-white self-end' : 'bg-gray-200 text-tinta self-start'}`;
       div.innerText = msg;
       chatMessages.appendChild(div);
       chatMessages.scrollTop = chatMessages.scrollHeight;
     };
 
-    const handleSendChat = async () => {
-      const message = chatInput.value.trim();
+    const kirimPesanKeAI = async (pesanTeks) => {
+      const message = pesanTeks.trim();
       if (!message) return;
 
       appendMessage(message, 'user');
@@ -370,7 +463,7 @@
       
       const loadingDiv = document.createElement('div');
       loadingDiv.className = 'bg-gray-200 text-tinta p-2 rounded-lg max-w-[80%] self-start italic text-xs';
-      loadingDiv.innerText = 'AI sedang mengetik...';
+      loadingDiv.innerText = 'AI sedang mengecek data...';
       loadingDiv.id = 'loadingMsg';
       chatMessages.appendChild(loadingDiv);
       chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -383,7 +476,8 @@
         });
         const data = await res.json();
         
-        document.getElementById('loadingMsg').remove();
+        const loader = document.getElementById('loadingMsg');
+        if (loader) loader.remove();
         
         if (data.success) {
           appendMessage(data.data.reply, 'bot');
@@ -391,14 +485,29 @@
           appendMessage("Error: " + data.message, 'bot');
         }
       } catch (err) {
-        document.getElementById('loadingMsg').remove();
+        const loader = document.getElementById('loadingMsg');
+        if (loader) loader.remove();
         appendMessage("Gagal terhubung ke AI.", 'bot');
       }
     };
 
-    sendChatBtn.addEventListener('click', handleSendChat);
+    function cekResiViaAI() {
+      const resi = document.getElementById('inputCariResi').value.trim().toUpperCase();
+      if (!resi) {
+        alert("Masukkan nomor resi terlebih dahulu (contoh: LNDRY-001)");
+        return;
+      }
+      chatBox.classList.remove('hidden');
+      document.getElementById('inputCariResi').value = '';
+      kirimPesanKeAI(`Tolong cek status pesanan untuk nomor resi ${resi}`);
+    }
+
+    sendChatBtn.addEventListener('click', () => kirimPesanKeAI(chatInput.value));
     chatInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') handleSendChat();
+      if (e.key === 'Enter') kirimPesanKeAI(chatInput.value);
+    });
+    document.getElementById('inputCariResi').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') cekResiViaAI();
     });
   </script>
 
